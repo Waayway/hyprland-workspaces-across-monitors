@@ -1,24 +1,37 @@
 {
-  description = "A Nix-flake-based Shell development environment";
+  description = "Hyprland Workspaces across multiple monitors";
 
-  inputs.nixpkgs.url = "github:NixOS/nixpkgs/nixpkgs-unstable";
-
-  outputs = { self, nixpkgs }:
+  inputs = {
+    nixpkgs.url = "github:NixOS/nixpkgs/nixpkgs-unstable";
+    flake-utils.url = "github:numtide/flake-utils";
+  };
+  outputs = { self, nixpkgs, flake-utils, ... }: flake-utils.lib.eachSystem [ "x86_64-linux" ] (system:
     let
-      supportedSystems = [ "x86_64-linux" "aarch64-linux" "x86_64-darwin" "aarch64-darwin" ];
-      forEachSupportedSystem = f: nixpkgs.lib.genAttrs supportedSystems (system: f {
-        pkgs = import nixpkgs { inherit system; };
-      });
-    in
-    {
-      devShells = forEachSupportedSystem
-        ({ pkgs }: {
-          default = pkgs.mkShell {
-            shellHook = ''
-              export PATH=$PATH:$(pwd)/target/debug
-            '';
-            packages = with pkgs; [  ];
+      pkgs = import nixpkgs {
+        inherit system;
+      };
+
+
+      wam = pkgs.rustPlatform.buildRustPackage
+        {
+          pname = "workspace-across-monitors";
+          version = "0.0.1";
+          src = ./.;
+
+          cargoLock = {
+            lockFile = ./Cargo.lock;
           };
-        });
-    };
-}
+
+          nativeBuildInputs = [ pkgs.pkg-config ];
+          PKG_CONFIG_PATH = "${pkgs.openssl.dev}/lib/pkgconfig";
+        };
+        in {
+        defaultPackage = wam;
+      devShell = pkgs.mkShell {
+        buildInputs = [
+          wam
+        ];
+      };
+      }
+      );
+      }
