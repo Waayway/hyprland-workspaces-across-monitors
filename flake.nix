@@ -6,40 +6,14 @@
     flake-utils.url = "github:numtide/flake-utils";
   };
   outputs = { self, nixpkgs, flake-utils, ... }:
-    flake-utils.lib.eachDefaultSystem (system:
-      let
-        pkgs = import nixpkgs {
-          inherit system;
+    # flake-utils.lib.eachSystem [ system.x86_64-linux ]
+    #   (system:
+        let
+          system = "x86_64-linux";
+          pkgs = nixpkgs.legacyPackages.${system};
+        in
+        {
+          packages.${system}.default = pkgs.callPackage ./default.nix { inherit pkgs; };
         };
-
-        wam = pkgs.rustPlatform.buildRustPackage
-          {
-            pname = "workspace-across-monitors";
-            version = "0.0.1";
-            src = ./.;
-
-            cargoLock = {
-              lockFile = ./Cargo.lock;
-            };
-
-            nativeBuildInputs = [ pkgs.pkg-config ];
-            PKG_CONFIG_PATH = "${pkgs.openssl.dev}/lib/pkgconfig";
-          };
-      in
-      {
-        packages = rec {
-          wam = wam;
-          defaultPackage.${system} = wam;
-        };
-        apps = rec {
-          wam = flake-utils.lib.mkApp { drv = self.packages.${system}.wam; };
-          default = wam;
-        };
-        devShell = pkgs.mkShell {
-          buildInputs = [
-            wam
-          ];
-        };
-      }
-    );
+      # );
 }
